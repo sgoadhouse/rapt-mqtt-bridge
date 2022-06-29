@@ -32,3 +32,17 @@ various sensors in your local network to home automation systems like
 [Grafana](https://grafana.com) to graph. In fact Home Assistant can be
 easily configured to subscribe to the MQTT data, act on it, if need
 be, and then pass on to an InfluxDB that can be accessed from Grafana.
+
+## Run as Cron job
+
+To have this script automatically run after bootup, configure it to run as a cron job.
+
+On Linux, use the command:
+
+`crontab -e`
+
+Then in the editor, add to the last line:
+
+`@reboot sleep 120 && /usr/bin/python3 <path to python script> -f -s -n 15`
+
+Of course, choose the arguments that you desire and the path to your script.
