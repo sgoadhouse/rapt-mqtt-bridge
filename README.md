@@ -43,6 +43,11 @@ On Linux, use the command:
 
 Then in the editor, add to the last line:
 
-`@reboot sleep 120 && /usr/bin/python3 <path to python script> -f -s -n 15`
+`@reboot /bin/bash -e <path_to_rapt-mqtt-bridge>/rapt-mqtt-cron.sh`
 
-Of course, choose the arguments that you desire and the path to your script.
+Then edit `rapt-mqtt-cron.sh` in this repo and choose the arguments
+that you desire. The reason to run under a specific user instead of
+root is because several environment variables must be setup. It may be
+better to set them up under a user besides root but it is up to
+you. Be sure to put them in your $HOME/.profile file since some
+$HOME/.bashrc files do not execute if not an interactive shell.
