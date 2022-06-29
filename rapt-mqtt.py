@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 #!/usr/bin/env python3
 """
+----------------------------------------------------------------------------------
 Get RAPT Pill Telemetry data from IoT RESTful API. Publish to MQTT broker.
 
-For now, only handle RAPT pill.
+For now, this only handles RAPT pill.
 
 Must create an API Secret at https://app.rapt.io/account/apisecrets and then set
 the following environment variables with your details:
@@ -16,18 +17,18 @@ export RAPT_API_PASS=\"api_secret\"
 export MQTT_IP=\"192.168.1.1\"
 
 # If have a username/password on MQTT broker (and you should), define the following
-# with your details. Otherwise do no define this envirnoment variable and no 
+# with your details. Otherwise do not define this envirnoment variable and no 
 # authentication will be used.
 export MQTT_AUTH=\"{'username':\\\"mymqttuser\\\", 'password':\\\"mymqttpw\\\"}\"
 
 The script works as follows,
 
  1. Get a token to access data
- 2. If successful, get Hydrometer data
+ 2. If successful, get Hydrometer data for all Hydrometers
  3. If any new data:
   * Construct a JSON payload
   * Send payload to the MQTT server
- 4. Sleep for X minutes before getting a new measurement
+ 4. Sleep for X minutes before checking for a new measurement
 
 # How to run
 
@@ -37,7 +38,7 @@ First install Python dependencies
 
 Run the script,
 
- python rapt-mqtt.py
+ python rapt-mqtt.py -n 30 -f -s
 
 """
 
@@ -287,7 +288,7 @@ if __name__ == '__main__':
     try:
         args = cmdline_args()
     except:
-        print('\nTry $python rapt-mqtt.py -n 60 -f -s')
+        print(__doc__)
         sys.exit(-2)
         
     main(args)
