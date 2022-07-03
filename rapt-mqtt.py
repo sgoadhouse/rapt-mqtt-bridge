@@ -69,6 +69,11 @@ from ast import literal_eval
 baseURLAPI = "https://api.rapt.io/api"
 URLtoken = "https://id.rapt.io/connect/token"
 
+# LOG Settings
+lg.basicConfig(level=lg.INFO)
+LOG = lg.getLogger()
+
+
 def cmdline_args():
     # from https://gist.github.com/ahogen/6fc1760bbf924f4ee6857a08e4fea80a
     
@@ -81,8 +86,8 @@ def cmdline_args():
     #               help="desc")
     #p.add_argument("required_int", type=int,
     #               help="req number")
-    #p.add_argument("--on", action="store_true",
-    #               help="include to enable")
+    #p.add_argument("--log_none", action="store_true", 
+    #               help="include to disable logging")
     p.add_argument("-v", "--verbosity", type=int, choices=[0,1,2], default=0,
                    help="increase output verbosity (default: %(default)s)")
     
@@ -100,7 +105,7 @@ def cmdline_args():
     
     return(p.parse_args())
 
-def GetHydrometers(tk):
+def GetHydrometers(tk, verbosity=0):
 
     URL = baseURLAPI + "/Hydrometers/GetHydrometers"
     
@@ -115,8 +120,9 @@ def GetHydrometers(tk):
         raise RuntimeError("GetHydrometers(): " + str(resp.status_code) + "  " + str(resp.text))
 
     data = json.loads(resp.text)
-    #@@@#print('Hydrometers: ' + str(resp.text))
-    #@@@#print('Success')
+    if (verbosity >= 2):
+        LOG.info('Hydrometers: ' + str(resp.text))
+        LOG.info('Success')
 
     return data
     
@@ -140,14 +146,14 @@ def getRAPTToken(ur, pw):
         raise RuntimeError("getRAPTToken(): " + str(resp.status_code) + "  " + str(resp.text))
 
     tk = json.loads(resp.text)['access_token']
-    #@@@#print('token: ' + str(tk))
-    #@@@#print('token: ' + str(resp.text))
-    #@@@#print('Success')
+    #@@@#LOG.info('token: ' + str(tk))
+    #@@@#LOG.info('token: ' + str(resp.text))
+    #@@@#LOG.info('Success')
 
     return tk
 
 
-def publishData(name, data, mqttConfig, verbose=False):
+def publishData(name, data, mqttConfig, verbosity=0):
 
     msgs = []
     
@@ -157,22 +163,42 @@ def publishData(name, data, mqttConfig, verbose=False):
     # Send message via MQTT server
     publish.multiple(msgs, hostname=mqttConfig['host'], port=mqttConfig['port'], auth=mqttConfig['auth'], protocol=4)
 
-    if verbose:    
-        print("New Data from RAPT Pill '{}': temp={}F/{}C  sg={}/plato={}/Brix={}  batt={}%  rssi={}dBm time={}".format(
+    if verbosity >= 1:    
+        LOG.info("New Data from RAPT Pill '{}': temp={}F/{}C  sg={}/plato={}/Brix={}  batt={}%  rssi={}dBm time={}".format(
             name, data["temperature_fahrenheit"], data["temperature_celsius"],
             data["specific_gravity"], data["plato"], data["brix"], data["battery"], data["rssi"],
             data["lastActivityTime"]))
 
     
-def oldData(name, data, verbose=False):
+def oldData(name, data, verbosity=0):
 
-    if verbose:
-        print("only OLD Data from RAPT Pill '{}': temp={}F/{}C  sg={}/plato={}/Brix={}".format(
+    if verbosity >= 2:
+        LOG.info("only OLD Data from RAPT Pill '{}': temp={}F/{}C  sg={}/plato={}/Brix={}".format(
             name, data["temperature_fahrenheit"], data["temperature_celsius"], data["specific_gravity"], data["plato"], data["brix"]))
 
     
 def main(args):
 
+    #@@@#if (not args.log_none):
+    if (True):
+        # LOG Settings
+        #
+        # Create handlers
+        c_handler = lg.StreamHandler()
+        f_handler = lg.FileHandler('/tmp/rapt-mqtt-{}.log'.format(os.getpid()))
+        c_handler.setLevel(lg.DEBUG)
+        f_handler.setLevel(lg.INFO)
+
+        # Create formatters and add it to handlers
+        c_format = lg.Formatter('%(name)s - %(levelname)s - %(message)s')
+        f_format = lg.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        c_handler.setFormatter(c_format)
+        f_handler.setFormatter(f_format)
+
+        # Add handlers to the logger
+        LOG.addHandler(c_handler)
+        LOG.addHandler(f_handler)
+    
     # RAPT Settings
     raptConfig = {
         'user': os.environ.get('RAPT_API_USER'),
@@ -188,9 +214,10 @@ def main(args):
     }
     
     if not raptConfig['user'] or not raptConfig['pwrd']:
-        print("Must set the following environment variables with your specifics:")
-        print('export RAPT_API_USER="raptuser@email.com"')
-        print('export RAPT_API_PASS="api_secret"')
+        errmsg = ("Must set the following environment variables with your specifics:\n" +
+                  '   export RAPT_API_USER="raptuser@email.com"\n' +
+                  '   export RAPT_API_PASS="api_secret"')
+        LOG.error(errmsg)
         sys.exit(-1)
     
     try:
@@ -204,7 +231,7 @@ def main(args):
         while(1):
             tk = getRAPTToken(raptConfig['user'], raptConfig['pwrd'])
 
-            for hydro in GetHydrometers(tk):
+            for hydro in GetHydrometers(tk, verbosity=args.verbosity):
                 # Check if the RAPT Pill with this name has a saved
                 # time in lastTime[]. If not, initialize it to then
                 # which is created when the script is first run.
@@ -269,19 +296,21 @@ def main(args):
                     lastTime[hydro["name"]] = lat
 
                     # Publish to MQTT broker
-                    publishData(hydro["name"], data, mqttConfig, verbose=(args.verbosity>0))
+                    publishData(hydro["name"], data, mqttConfig, verbosity=args.verbosity)
                     
                 else:
-                    oldData(hydro["name"], data, verbose=(args.verbosity>0))
+                    oldData(hydro["name"], data, verbosity=args.verbosity)
 
             # Wait until next scan period
             time.sleep(args.interval*60)
-                
+    except KeyboardInterrupt:
+        LOG.info("Received Ctrl-C. Exiting...")
     except RuntimeError as err:
-        print("ERROR {}".format(err))
+        errmsg = "ERROR {}".format(err)
+        LOG.error(errmsg)
     except BaseException as error:
-        print('An unexpected exception occurred: {}'.format(error))        
-        print(repr(error))
+        errmsg = 'An unexpected exception occurred: {}\n'.format(error) + repr(error)
+        LOG.error(errmsg)
         traceback.print_exc()
         
 if __name__ == '__main__':
