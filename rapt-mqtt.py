@@ -283,8 +283,8 @@ def main(args):
                     "brix": "{:.2f}".format(degree_brix),
                     "temperature_celsius": "{:.1f}".format(temperature_celsius),
                     "temperature_fahrenheit": "{:.1f}".format(temperature_fahrenheit),
-                    "battery": "{:d}".format(hydro["battery"]),
-                    "rssi": "{:d}".format(hydro["rssi"]),
+                    "battery": "{:.1f}".format(hydro["battery"]),
+                    "rssi": "{:.1f}".format(hydro["rssi"]),
                     "lastActivityTime": "{}".format(hydro["lastActivityTime"])
                 }
 
