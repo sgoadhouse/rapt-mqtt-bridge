@@ -255,7 +255,7 @@ def main(args):
 
                 if (args.specific):
                     # gravity is in specific gravity. convert to plato & Brix
-                    specific_gravity = round(hydro["gravity"]/1000,3)
+                    specific_gravity = round(hydro["gravity"]/1000,4)
                     # from https://www.brewersfriend.com/plato-to-sg-conversion-chart/
                     degree_plato = 135.997*pow(specific_gravity, 3) - 630.272*pow(specific_gravity, 2) + 1111.14*specific_gravity - 616.868
                     # from https://www.brewersfriend.com/brix-converter/
@@ -278,7 +278,7 @@ def main(args):
                     degree_brix = (((182.4601 * specific_gravity-775.6821) * specific_gravity+1262.7794) * specific_gravity-669.5622)
 
                 data = {
-                    "specific_gravity": "{:.3f}".format(specific_gravity),
+                    "specific_gravity": "{:.4f}".format(specific_gravity),
                     "plato": "{:.2f}".format(degree_plato),
                     "brix": "{:.2f}".format(degree_brix),
                     "temperature_celsius": "{:.1f}".format(temperature_celsius),
